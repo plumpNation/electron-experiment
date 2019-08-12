@@ -4,14 +4,10 @@
 
 - install node >= 11
 - install yarn >=1.17
-- open 2 terminals
+- clone https://github.com/plumpNation/electron-server-experiment and follow it's README
 
 ```
-# in terminal 1
-cd server && yarn && yarn start
-
-# in terminal 3
-cd src && yarn && yarn start
+yarn start
 ```
 
 ## Cookies
