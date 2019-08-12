@@ -16,7 +16,8 @@ cd src && yarn && yarn start
 
 ## todo
 
-- [ ] make a request to the hello world endpoint
+- [x] add a debugger
+- [x] make a request to the hello world endpoint
 - [ ] return a cookie from the hello world endpoint
 - [ ] retrieve the cookie
 - [ ] build the app
