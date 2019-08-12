@@ -7,15 +7,13 @@ const path = require('path')
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
 
-fetch('http://localhost:1234')
-  .then(res => res.json())
-  .then(body => console.log(body))
-  .catch(e => console.log(e));
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow)
+app.on('ready', () => {
+  createWindow();
+  getCookie();
+});
 
 // Quit when all windows are closed.
 app.on('window-all-closed', function () {
@@ -37,7 +35,14 @@ app.on('activate', function () {
 // /////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////
 
-function createWindow () {
+function getCookie() {
+  fetch('http://localhost:1234')
+    .then(res => res.json())
+    .then(body => console.log(body))
+    .catch(e => console.log(e));
+}
+
+function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 800,
