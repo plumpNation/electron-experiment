@@ -1,15 +1,20 @@
 // Modules to control application life and create native browser window
 const { app, BrowserWindow, session } = require('electron')
+const config = require('config')
 
 const fetch = require('electron-fetch').default;
 const { Cookie } = require('tough-cookie') // could use CookieJar
 const path = require('path')
+
+const program = require('./program')
 
 const apiPath = 'http://localhost:1234'
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
+
+console.log(config.get('foo'))
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

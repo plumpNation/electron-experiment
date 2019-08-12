@@ -6,8 +6,8 @@
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceRoot}",
-      "runtimeExecutable": "${workspaceRoot}/src/node_modules/.bin/electron",
-      "args" : ["src"],
+      "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron",
+      "args" : [".", "--NODE_ENV=development"],
       "outputCapture": "std"
     }
   ]
