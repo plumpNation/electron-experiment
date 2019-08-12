@@ -1,7 +1,11 @@
 // Modules to control application life and create native browser window
-const {app, BrowserWindow} = require('electron')
+const { app, BrowserWindow, session } = require('electron')
+
 const fetch = require('electron-fetch').default;
+const { Cookie } = require('tough-cookie') // could use CookieJar
 const path = require('path')
+
+const apiPath = 'http://localhost:1234'
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -11,8 +15,8 @@ let mainWindow
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
-  createWindow();
-  getCookie();
+  // createWindow();
+  getCookie().then(testCookie);
 });
 
 // Quit when all windows are closed.
@@ -35,11 +39,38 @@ app.on('activate', function () {
 // /////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////
 
+async function testCookie() {
+  const cookie = await session.defaultSession.cookies.get({url: apiPath});
+
+  return fetch(apiPath + '/test-cookie', {
+    headers: {
+      cookie: cookie[0].name + '=' + cookie[0].value,
+    },
+    credentials: 'same-origin'
+  });
+}
+
 function getCookie() {
-  fetch('http://localhost:1234')
-    .then(res => res.json())
+  return fetch(apiPath)
+    .then((res) => {
+      return Promise.all([
+        res,
+        storeCookies(res)
+      ]);
+    })
+    .then(([res]) => res.json())
     .then(body => console.log(body))
     .catch(e => console.log(e));
+}
+
+function storeCookies(res) {
+  const cookie = Cookie.parse(res.headers.get('set-cookie'));
+
+  return session.defaultSession.cookies.set({
+    url: apiPath,
+    name: cookie.key,
+    value: cookie.value,
+  });
 }
 
 function createWindow() {
