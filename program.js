@@ -1,5 +1,7 @@
 /**
  * Set up all your command line options in here.
+ *
+ * MOVE THIS TO YARGS
  */
 
 const program = require('commander')
