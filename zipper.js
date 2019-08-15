@@ -4,9 +4,60 @@ const archiver = require('archiver')
 const streamBuffers = require('stream-buffers')
 const fetch = require('electron-fetch').default;
 
+/**
+ * Absolute path to the file or directory you wish to zip
+ *
+ * @todo error handling, cancelling?, zip compression config?, buffer size?
+ * @param {string} src
+ * @returns {Promise<Buffer>}
+ */
+const getZipBuffer = (src) => {
+  const name = path.basename(src);
+  const zipArchive = archiver('zip');
+
+  const output = new streamBuffers.WritableStreamBuffer({
+    initialSize: (1000 * 1024),   // start at 1000 kilobytes.
+    incrementAmount: (1000 * 1024) // grow by 1000 kilobytes each time buffer overflows.
+  });
+
+  zipArchive.pipe(output);
+
+  return new Promise((resolve, reject) => {
+    try {
+      fs.accessSync(src, fs.constants.F_OK);
+
+    } catch (err) {
+      reject('Could not access ' + src);
+
+      return;
+    }
+
+    output.on('finish', () => {
+      resolve({
+        name: name + '.zip',
+        contents: output.getContents(),
+      });
+    });
+
+    if (fs.statSync(src).isDirectory()) {
+      // add the directory and all it's subdirectories to the zip
+      zipArchive.directory(src, name);
+
+    } else {
+      // add the file with it's original name to the zip
+      zipArchive.append(fs.createReadStream(src), { name });
+    }
+
+    zipArchive.finalize()
+      .then(() => {
+        output.end(); // triggers the finish event
+      });
+  });
+}
+
 const FormData = require('form-data');
 
-const imgDir = path.join(__dirname, 'img')
+const imgDir = '/Users/gavin/dev/electron/img/';
 
 const imgs = [
   imgDir, // dir
@@ -14,79 +65,31 @@ const imgs = [
   path.join(imgDir, 'boom.txt') // file
 ];
 
-try {
-  fs.accessSync(imgs[0], fs.constants.F_OK);
-} catch (err) {
-  console.log('no access to imgDir: ' + imgs[0]);
-  process.exit(2);
-}
-
 imgs.forEach(img => {
-  zip(img, path.join(__dirname, path.basename(img)));
+  getZipBuffer(img)
+    .then(res => {
+      console.log(res);
+
+      return res;
+    })
+    .then(({name, contents}) => sendFileToServer(name, contents))
+    .catch(console.error);
 });
 
-// folder double check
-function zip(srcPath, outputPath) {
-  fs.access(srcPath, fs.constants.F_OK, (notExistingError) => {
-    if (notExistingError) {
-        return console.error(notExistingError);
-    }
+function sendFileToServer(name, file) {
+  const form = new FormData();
 
-    fs.access(path.dirname(outputPath), fs.constants.F_OK, (notExistingError) => {
-        if (notExistingError) {
-            return console.error(notExistingError);
-        }
+  form.append('file', file, {
+    contentType: 'application/zip',
+    name: 'file',
+    filename: `${name}`,
+  })
 
-        var output = new streamBuffers.WritableStreamBuffer({
-          initialSize: (1000 * 1024),   // start at 1000 kilobytes.
-          incrementAmount: (1000 * 1024) // grow by 1000 kilobytes each time buffer overflows.
-        });
-
-        var zipArchive = archiver('zip');
-
-        const fileName = path.basename(srcPath);
-
-        output.on('close', () => {
-          console.log('done!')
-        });
-
-        output.on('finish', () => {
-          const contents = output.getContents()
-
-          console.log(contents)
-
-          const form = new FormData();
-          form.append('file', contents, {
-            contentType: 'application/zip',
-            name: 'file',
-            filename: `${fileName}.zip`,
-          })
-
-          fetch('http://localhost:1234/upload', {
-            method: 'POST',
-            body: form,
-          })
-          .then(res => res.json())
-          .then(console.log)
-          .catch(err => console.error);
-        });
-
-        zipArchive.pipe(output);
-
-        if (fs.statSync(srcPath).isDirectory()) {
-          zipArchive.directory(srcPath, false);
-
-        } else {
-          zipArchive.append(
-            fs.createReadStream(srcPath),
-            { name: fileName }
-          );
-        }
-
-        zipArchive.finalize()
-          .then(() => {
-            output.end();
-          });
-    });
-  });
+  fetch('http://localhost:1234/upload', {
+    method: 'POST',
+    body: form,
+  })
+  .then(res => res.json())
+  .then(console.log)
+  .catch(err => console.error);
 }
