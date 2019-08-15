@@ -2,6 +2,9 @@ const path = require('path')
 const fs = require('fs')
 const archiver = require('archiver')
 const streamBuffers = require('stream-buffers')
+const fetch = require('electron-fetch').default;
+
+const FormData = require('form-data');
 
 const imgDir = path.join(__dirname, 'img')
 
@@ -34,11 +37,38 @@ function zip(srcPath, outputPath) {
             return console.error(notExistingError);
         }
 
-        var output = fs.createWriteStream(outputPath + '.zip');
+        var output = new streamBuffers.WritableStreamBuffer({
+          initialSize: (1000 * 1024),   // start at 1000 kilobytes.
+          incrementAmount: (1000 * 1024) // grow by 1000 kilobytes each time buffer overflows.
+        });
+
         var zipArchive = archiver('zip');
 
-        output.on('close', function() {
-            console.log('done!')
+        const fileName = path.basename(srcPath);
+
+        output.on('close', () => {
+          console.log('done!')
+        });
+
+        output.on('finish', () => {
+          const contents = output.getContents()
+
+          console.log(contents)
+
+          const form = new FormData();
+          form.append('file', contents, {
+            contentType: 'application/zip',
+            name: 'file',
+            filename: `${fileName}.zip`,
+          })
+
+          fetch('http://localhost:1234/upload', {
+            method: 'POST',
+            body: form,
+          })
+          .then(res => res.json())
+          .then(console.log)
+          .catch(err => console.error);
         });
 
         zipArchive.pipe(output);
@@ -49,11 +79,14 @@ function zip(srcPath, outputPath) {
         } else {
           zipArchive.append(
             fs.createReadStream(srcPath),
-            { name: path.basename(srcPath) }
+            { name: fileName }
           );
         }
 
-        zipArchive.finalize();
+        zipArchive.finalize()
+          .then(() => {
+            output.end();
+          });
     });
   });
 }
